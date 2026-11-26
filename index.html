@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>두더지 팡! 클릭 카운터 게임</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Jua', sans-serif;
+      background: linear-gradient(180deg, #fff6d6 0%, #ffe4ec 55%, #d9f7be 100%);
+      overflow: hidden;
+    }
+
+    /* 배경 장식 구름/꽃 */
+    .bg-deco {
+      position: fixed;
+      font-size: 2.2rem;
+      opacity: 0.45;
+      pointer-events: none;
+      animation: float 4s ease-in-out infinite;
+    }
+    .deco-1 { top: 8%; left: 10%; animation-delay: 0s; }
+    .deco-2 { top: 14%; right: 12%; animation-delay: 1s; }
+    .deco-3 { bottom: 12%; left: 14%; animation-delay: 2s; }
+    .deco-4 { bottom: 10%; right: 10%; animation-delay: 1.5s; }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .game-card {
+      position: relative;
+      width: 90%;
+      max-width: 420px;
+      background: rgba(255, 255, 255, 0.92);
+      border-radius: 32px;
+      padding: 32px 24px 28px;
+      text-align: center;
+      box-shadow: 0 16px 36px rgba(255, 143, 171, 0.25), 0 4px 12px rgba(0, 0, 0, 0.05);
+      border: 4px solid #ffd6e0;
+    }
+
+    .title {
+      margin: 0 0 8px;
+      font-size: 1.8rem;
+      color: #ff6b8b;
+      letter-spacing: 0.5px;
+    }
+
+    .status-bar {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      min-height: 36px;
+      align-items: center;
+    }
+
+    .badge {
+      background: #fff0f5;
+      color: #e05275;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 1.05rem;
+      border: 2px solid #ffc2d1;
+    }
+
+    .badge.timer-active {
+      background: #fff3bf;
+      color: #d9480f;
+      border-color: #ffd43b;
+      animation: pulseBadge 0.6s infinite alternate;
+    }
+
+    @keyframes pulseBadge {
+      from { transform: scale(1); }
+      to { transform: scale(1.06); }
+    }
+
+    .score-wrapper {
+      position: relative;
+      margin: 8px 0 18px;
+    }
+
+    .score-label {
+      font-size: 1rem;
+      color: #8c7a6b;
+      margin-bottom: 2px;
+    }
+
+    .score {
+      font-size: 4.5rem;
+      line-height: 1;
+      color: #ff7b00;
+      text-shadow: 3px 3px 0px #ffe066;
+      display: inline-block;
+      transition: transform 0.1s ease;
+    }
+
+    /* 숫자 '팡!' 애니메이션 */
+    .score.pop {
+      animation: scorePop 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    }
+
+    @keyframes scorePop {
+      0% { transform: scale(1); }
+      45% { transform: scale(1.42) rotate(-4deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+
+    /* 두더지 버튼 영역 */
+    .mole-stage {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 10px 0 24px;
+    }
+
+    .mole-btn {
+      position: relative;
+      width: 175px;
+      height: 175px;
+      border-radius: 50%;
+      border: 6px solid #e6b88a;
+      background: radial-gradient(circle at 35% 30%, #fff9db, #f8d49a 70%, #e0a96d 100%);
+      box-shadow: 0 12px 0 #c68b59, 0 18px 25px rgba(139, 90, 43, 0.25);
+      font-size: 5.8rem;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+      outline: none;
+    }
+
+    .mole-btn:hover:not(:disabled) {
+      transform: translateY(-2px) scale(1.03);
+    }
+
+    .mole-btn:active:not(:disabled),
+    .mole-btn.whacked {
+      transform: translateY(8px) scale(0.92);
+      box-shadow: 0 4px 0 #c68b59, 0 8px 12px rgba(139, 90, 43, 0.2);
+    }
+
+    .mole-btn:disabled {
+      cursor: not-allowed;
+      filter: grayscale(0.2);
+    }
+
+    /* 클릭 시 떠오르는 '팡!' 이펙트 */
+    .pang-effect {
+      position: absolute;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #ff477e;
+      text-shadow: 2px 2px 0 #fff, -1px -1px 0 #fff;
+      pointer-events: none;
+      animation: pangFly 0.55s ease-out forwards;
+      z-index: 10;
+    }
+
+    @keyframes pangFly {
+      0% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(0.5) rotate(-10deg);
+      }
+      50% {
+        opacity: 1;
+        transform: translate(-50%, -115%) scale(1.3) rotate(8deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -160%) scale(1.0) rotate(0deg);
+      }
+    }
+
+    /* 컨트롤 버튼 */
+    .controls {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px 16px;
+      border: none;
+      border-radius: 18px;
+      font-family: 'Jua', sans-serif;
+      font-size: 1.15rem;
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.15s ease;
+    }
+
+    .btn:active:not(:disabled) {
+      transform: translateY(3px);
+    }
+
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .btn-challenge {
+      background: #ff85a1;
+      color: #fff;
+      box-shadow: 0 5px 0 #e05777;
+    }
+
+    .btn-challenge:hover:not(:disabled) {
+      filter: brightness(1.05);
+    }
+
+    .btn-reset {
+      background: #a3e4d7;
+      color: #1e6b5c;
+      box-shadow: 0 5px 0 #73c6b6;
+    }
+
+    .btn-reset:hover:not(:disabled) {
+      filter: brightness(1.03);
+    }
+
+    /* 결과 모달 */
+    .result-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(255, 238, 244, 0.78);
+      backdrop-filter: blur(4px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 50;
+      padding: 20px;
+    }
+
+    .result-overlay.show {
+      display: flex;
+      animation: fadeIn 0.25s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .result-box {
+      background: #fff;
+      border: 4px solid #ffd43b;
+      border-radius: 28px;
+      padding: 28px 24px;
+      max-width: 340px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+      animation: boxBounce 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    }
+
+    @keyframes boxBounce {
+      0% { transform: scale(0.7); }
+      100% { transform: scale(1); }
+    }
+
+    .result-emoji {
+      font-size: 3.5rem;
+      margin-bottom: 6px;
+    }
+
+    .result-title {
+      font-size: 1.6rem;
+      color: #ff6b8b;
+      margin: 0 0 8px;
+    }
+
+    .result-score {
+      font-size: 2.6rem;
+      color: #ff7b00;
+      margin: 6px 0;
+    }
+
+    .result-comment {
+      font-size: 1.05rem;
+      color: #666;
+      margin-bottom: 20px;
+    }
+
+    .btn-close-modal {
+      width: 100%;
+      background: #ffd43b;
+      color: #5c4400;
+      box-shadow: 0 5px 0 #eab308;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-deco deco-1">☁️</div>
+  <div class="bg-deco deco-2">🌼</div>
+  <div class="bg-deco deco-3">🌱</div>
+  <div class="bg-deco deco-4">✨</div>
+
+  <main class="game-card">
+    <h1 class="title">두더지 팡! 클릭 게임</h1>
+
+    <div class="status-bar">
+      <span id="modeBadge" class="badge">자유 클릭 모드</span>
+      <span id="timerBadge" class="badge" style="display: none;">남은 시간: 10.0초</span>
+    </div>
+
+    <div class="score-wrapper">
+      <div class="score-label">클릭 수</div>
+      <div id="scoreDisplay" class="score">0</div>
+    </div>
+
+    <div id="moleStage" class="mole-stage">
+      <button id="moleBtn" class="mole-btn" type="button" aria-label="두더지 클릭 버튼">
+        🐹
+      </button>
+    </div>
+
+    <div class="controls">
+      <button id="challengeBtn" class="btn btn-challenge" type="button">⏱️ 10초 도전</button>
+      <button id="resetBtn" class="btn btn-reset" type="button">🔄 초기화</button>
+    </div>
+  </main>
+
+  <div id="resultOverlay" class="result-overlay">
+    <div class="result-box">
+      <div id="resultEmoji" class="result-emoji">🎉</div>
+      <h2 class="result-title">10초 도전 완료!</h2>
+      <div id="resultScore" class="result-score">0점</div>
+      <p id="resultComment" class="result-comment">대단한 손놀림이에요!</p>
+      <button id="closeModalBtn" class="btn btn-close-modal" type="button">다시 놀기</button>
+    </div>
+  </div>
+
+  <script>
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const moleBtn = document.getElementById('moleBtn');
+    const moleStage = document.getElementById('moleStage');
+    const challengeBtn = document.getElementById('challengeBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const modeBadge = document.getElementById('modeBadge');
+    const timerBadge = document.getElementById('timerBadge');
+
+    const resultOverlay = document.getElementById('resultOverlay');
+    const resultEmoji = document.getElementById('resultEmoji');
+    const resultScore = document.getElementById('resultScore');
+    const resultComment = document.getElementById('resultComment');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+
+    let count = 0;
+    let isChallengeRunning = false;
+    let isChallengeFinished = false;
+    let timerInterval = null;
+    let timeLeft = 10.0;
+
+    const pangWords = ['팡!', '뿅!', '콩!', '터치!', '나이스!'];
+
+    function triggerScoreAnimation() {
+      scoreDisplay.classList.remove('pop');
+      void scoreDisplay.offsetWidth; // 리플로우 강제 실행으로 애니메이션 재시작
+      scoreDisplay.classList.add('pop');
+    }
+
+    function spawnPangEffect(e) {
+      const pang = document.createElement('span');
+      pang.className = 'pang-effect';
+      pang.textContent = pangWords[Math.floor(Math.random() * pangWords.length)];
+
+      const rect = moleStage.getBoundingClientRect();
+      let x = rect.width / 2;
+      let y = rect.height / 2;
+
+      if (e && e.clientX && e.clientY) {
+        x = e.clientX - rect.left;
+        y = e.clientY - rect.top;
+      } else {
+        x += (Math.random() - 0.5) * 60;
+        y += (Math.random() - 0.5) * 40;
+      }
+
+      pang.style.left = `${x}px`;
+      pang.style.top = `${y}px`;
+      moleStage.appendChild(pang);
+
+      setTimeout(() => {
+        pang.remove();
+      }, 550);
+    }
+
+    function handleMoleClick(e) {
+      if (isChallengeFinished) return;
+
+      count += 1;
+      scoreDisplay.textContent = count;
+      triggerScoreAnimation();
+      spawnPangEffect(e);
+    }
+
+    function startChallenge() {
+      clearInterval(timerInterval);
+      count = 0;
+      timeLeft = 10.0;
+      isChallengeRunning = true;
+      isChallengeFinished = false;
+
+      scoreDisplay.textContent = '0';
+      moleBtn.disabled = false;
+      challengeBtn.disabled = true;
+
+      modeBadge.style.display = 'none';
+      timerBadge.style.display = 'inline-block';
+      timerBadge.classList.add('timer-active');
+      timerBadge.textContent = `남은 시간: ${timeLeft.toFixed(1)}초`;
+
+      const startTime = performance.now();
+      const duration = 10000;
+
+      timerInterval = setInterval(() => {
+        const elapsed = performance.now() - startTime;
+        const remaining = Math.max(0, (duration - elapsed) / 1000);
+        timerBadge.textContent = `남은 시간: ${remaining.toFixed(1)}초`;
+
+        if (remaining <= 0) {
+          finishChallenge();
+        }
+      }, 50);
+    }
+
+    function finishChallenge() {
+      clearInterval(timerInterval);
+      isChallengeRunning = false;
+      isChallengeFinished = true;
+      moleBtn.disabled = true;
+      challengeBtn.disabled = false;
+
+      timerBadge.classList.remove('timer-active');
+      timerBadge.textContent = '시간 종료!';
+
+      showResultModal(count);
+    }
+
+    function showResultModal(finalScore) {
+      const cps = (finalScore / 10).toFixed(1);
+      resultScore.textContent = `${finalScore}회 (초당 ${cps}회)`;
+
+      if (finalScore >= 70) {
+        resultEmoji.textContent = '👑';
+        resultComment.textContent = '전설의 광클 마스터! 두더지가 어지러워해요!';
+      } else if (finalScore >= 50) {
+        resultEmoji.textContent = '🔥';
+        resultComment.textContent = '엄청난 스피드예요! 손가락이 보이지 않네요!';
+      } else if (finalScore >= 30) {
+        resultEmoji.textContent = '🎉';
+        resultComment.textContent = '훌륭한 기록이에요! 한 번 더 도전해 볼까요?';
+      } else {
+        resultEmoji.textContent = '🐹';
+        resultComment.textContent = '귀여운 워밍업이었어요! 다음엔 더 빠르게 팡!';
+      }
+
+      resultOverlay.classList.add('show');
+    }
+
+    function resetGame() {
+      clearInterval(timerInterval);
+      count = 0;
+      timeLeft = 10.0;
+      isChallengeRunning = false;
+      isChallengeFinished = false;
+
+      scoreDisplay.textContent = '0';
+      moleBtn.disabled = false;
+      challengeBtn.disabled = false;
+
+      timerBadge.classList.remove('timer-active');
+      timerBadge.style.display = 'none';
+      modeBadge.style.display = 'inline-block';
+      resultOverlay.classList.remove('show');
+    }
+
+    moleBtn.addEventListener('click', handleMoleClick);
+    challengeBtn.addEventListener('click', startChallenge);
+    resetBtn.addEventListener('click', resetGame);
+    closeModalBtn.addEventListener('click', resetGame);
+  </script>
+</body>
+</html>
